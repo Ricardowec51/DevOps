@@ -1,0 +1,70 @@
+vms:
+  # VM simple - usa TODO de los defaults (DHCP, ISO Ubuntu 24.04, credenciales default)
+  - vmid: 2001
+    name: "web-prod-01"
+    node: "Nuc13"
+    ip: "192.168.1.33"
+    template: "web-server"
+    tags: "web,production"
+    
+  # VM con IP estática - solo especificas la IP, el resto viene de defaults
+  - vmid: 2002
+    name: "db-prod-01"
+    node: "DELL"
+    memory: 16384
+    cores: 8
+    disk_size: "200G"
+    network_type: "static"
+    ip: "192.168.1.31"
+    tags: "database,production"
+    onboot: true
+    start: true
+    
+  # VM con ISO diferente (sobrescribe el default)
+  - vmid: 2004
+    name: "legacy-server"
+    node: "msa"
+    memory: 2048
+    cores: 2
+    disk_size: "30G"
+    cloudinit_enabled: false
+    tags: "legacy,test"
+    
+  # Resto de VMs - sin especificar ISO, usan el default de Ubuntu 24.04
+  - vmid: 2005
+    name: "vpn-server"
+    node: "msa2"
+    template: "small"
+    network_type: "static"
+    ip: "192.168.1.30"
+    tags: "vpn,network"
+  - vmid: 2010
+    name: "k8s-master-01"
+    node: "BOSC"
+    memory: 8192
+    cores: 4
+    disk_size: "100G"
+    network_type: "static"
+    ip: "192.168.1.101"
+    tags: "kubernetes,master"
+    
+  - vmid: 2011
+    name: "k8s-worker-01"
+    node: "DELL"
+    memory: 16384
+    cores: 8
+    disk_size: "200G"
+    network_type: "static"
+    ip: "192.168.1.34"
+    tags: "kubernetes,worker"
+    
+  - vmid: 2012
+    name: "k8s-worker-02"
+    node: "msa"
+    memory: 16384
+    cores: 8
+    disk_size: "200G"
+    network_type: "static"
+    ip: "192.168.1.35"
+    tags: "kubernetes,worker"
+

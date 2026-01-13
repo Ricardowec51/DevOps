@@ -1,0 +1,63 @@
+# Ejemplo: Cluster Kubernetes completo (3 masters + 3 workers)
+vms:
+  # Masters
+  - vmid: 201
+    name: "k8s-master-01"
+    node: "pve1"
+    memory: 8192
+    cores: 4
+    disk_size: "100G"
+    network_type: "static"
+    ip: "192.168.1.101"
+    tags: "kubernetes,master"
+
+  - vmid: 202
+    name: "k8s-master-02"
+    node: "pve2"
+    memory: 8192
+    cores: 4
+    disk_size: "100G"
+    network_type: "static"
+    ip: "192.168.1.102"
+    tags: "kubernetes,master"
+
+  - vmid: 203
+    name: "k8s-master-03"
+    node: "pve3"
+    memory: 8192
+    cores: 4
+    disk_size: "100G"
+    network_type: "static"
+    ip: "192.168.1.103"
+    tags: "kubernetes,master"
+
+  # Workers
+  - vmid: 211
+    name: "k8s-worker-01"
+    node: "pve1"
+    memory: 16384
+    cores: 8
+    disk_size: "200G"
+    network_type: "static"
+    ip: "192.168.1.111"
+    tags: "kubernetes,worker"
+
+  - vmid: 212
+    name: "k8s-worker-02"
+    node: "pve2"
+    memory: 16384
+    cores: 8
+    disk_size: "200G"
+    network_type: "static"
+    ip: "192.168.1.112"
+    tags: "kubernetes,worker"
+
+  - vmid: 213
+    name: "k8s-worker-03"
+    node: "pve3"
+    memory: 16384
+    cores: 8
+    disk_size: "200G"
+    network_type: "static"
+    ip: "192.168.1.113"
+    tags: "kubernetes,worker"

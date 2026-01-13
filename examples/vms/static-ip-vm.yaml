@@ -1,0 +1,17 @@
+# Ejemplo: VM con IP estática y credenciales personalizadas
+vms:
+  - vmid: 101
+    name: "prod-server"
+    node: "pve"
+    memory: 4096
+    cores: 4
+    disk_size: "50G"
+    network_type: "static"
+    ip: "192.168.1.50"
+    credentials:
+      user: "admin"
+      password: "change_me_please"
+      ssh_keys:
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ... usuario@host"
+    tags: "production,webserver"
+    start: true

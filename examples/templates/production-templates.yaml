@@ -1,0 +1,65 @@
+# Templates para entornos de producción
+templates:
+  # Servidor web pequeño
+  web-small:
+    memory: 2048
+    cores: 2
+    sockets: 1
+    disk_size: "30G"
+    description: "Servidor web pequeño - Nginx/Apache"
+
+  # Servidor web mediano
+  web-medium:
+    memory: 4096
+    cores: 4
+    sockets: 1
+    disk_size: "50G"
+    description: "Servidor web mediano - Node.js/Python"
+
+  # Base de datos pequeña
+  db-small:
+    memory: 4096
+    cores: 2
+    sockets: 1
+    disk_size: "100G"
+    description: "Base de datos pequeña - PostgreSQL/MySQL"
+
+  # Base de datos grande
+  db-large:
+    memory: 16384
+    cores: 8
+    sockets: 1
+    disk_size: "500G"
+    description: "Base de datos grande - PostgreSQL HA"
+
+  # Servidor de aplicaciones
+  app-server:
+    memory: 8192
+    cores: 4
+    sockets: 1
+    disk_size: "100G"
+    description: "Servidor de aplicaciones - Java/Python"
+
+  # Nodo Kubernetes Master
+  k8s-master:
+    memory: 8192
+    cores: 4
+    sockets: 1
+    disk_size: "100G"
+    description: "Kubernetes Control Plane"
+
+  # Nodo Kubernetes Worker
+  k8s-worker:
+    memory: 16384
+    cores: 8
+    sockets: 1
+    disk_size: "200G"
+    description: "Kubernetes Worker Node"
+
+  # Servidor de monitoreo
+  monitoring:
+    memory: 8192
+    cores: 4
+    sockets: 1
+    disk_size: "200G"
+    description: "Prometheus/Grafana Stack"

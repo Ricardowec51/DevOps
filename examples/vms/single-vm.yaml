@@ -1,0 +1,8 @@
+# Ejemplo: Crear una única VM con DHCP
+vms:
+  - vmid: 100
+    name: "test-vm-01"
+    node: "pve"
+    memory: 2048
+    cores: 2
+    disk_size: "20G"
