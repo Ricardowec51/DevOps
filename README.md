@@ -41,11 +41,22 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-3. Configurar credenciales:
+3. Configurar credenciales (IMPORTANTE):
 ```bash
+# Copiar archivo de ejemplo de variables de entorno
+cp .env.example .env
+
+# Editar con tus credenciales
+nano .env
+
+# Restringir permisos (seguridad)
+chmod 600 .env
+
+# Opcional: crear config.yaml para valores no sensibles
 cp config.yaml.example config.yaml
-# Editar config.yaml con tus valores
 ```
+
+**IMPORTANTE:** Todas las credenciales sensibles deben ir en `.env`, NO en `config.yaml`. Ver [docs/SECURITY.md](docs/SECURITY.md) para más detalles.
 
 ## Estructura del Proyecto
 
@@ -290,11 +301,12 @@ grep "ERROR" vm_creation.log
 
 ## Seguridad
 
-- **NUNCA** commits `config.yaml` con credenciales
-- Usa variables de entorno para credenciales sensibles
+- **NUNCA** commits `.env` o `config.yaml` con credenciales (ya están en .gitignore)
+- **Usa .env para TODAS las credenciales sensibles** (ver [docs/SECURITY.md](docs/SECURITY.md))
+- Restringir permisos: `chmod 600 .env`
 - Cambia las contraseñas por defecto de cloud-init
 - Configura claves SSH en lugar de passwords
-- Limita permisos del archivo config: `chmod 600 config.yaml`
+- Rota credenciales regularmente (cada 90 días recomendado)
 
 ## Contribuir
 

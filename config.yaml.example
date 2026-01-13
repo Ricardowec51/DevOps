@@ -1,11 +1,16 @@
 # Proxmox VM Creator - Configuración Principal
 # Copia este archivo a 'config.yaml' y ajusta los valores
+#
+# IMPORTANTE: Las credenciales sensibles se leen desde .env
+# Este archivo solo necesita valores NO sensibles o específicos por proyecto
 
 proxmox:
-  host: "192.168.1.143"           # IP del servidor Proxmox
-  user: "root@pam"                # Usuario de Proxmox
-  password: "tu_password_aqui"    # Password del usuario
-  verify_ssl: false               # Verificar certificado SSL
+  # Las credenciales se leen desde .env (ver .env.example)
+  # También puedes especificarlas aquí si lo prefieres (NO recomendado)
+  # host: "192.168.1.143"
+  # user: "root@pam"
+  # password: "tu_password_aqui"
+  # verify_ssl: false
 
 # Configuración de red
 network:
@@ -16,27 +21,30 @@ network:
   nameserver: "8.8.8.8"           # Servidor DNS
 
 # Credenciales por defecto para cloud-init
+# RECOMENDADO: Configurar en .env en lugar de aquí
 credentials:
-  user: "ubuntu"                  # Usuario por defecto
-  password: "ubuntu"              # Password por defecto (cambiar!)
-  ssh_keys:                       # Claves SSH públicas (opcional)
+  # user: "ubuntu"                # Se lee desde VM_DEFAULT_USER en .env
+  # password: "ubuntu"            # Se lee desde VM_DEFAULT_PASSWORD en .env
+  ssh_keys:                       # O configura VM_SSH_KEYS en .env
     # - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ..."
 
 # Configuración por defecto para todas las VMs
+# Los valores se pueden sobrescribir con variables de entorno (ver .env)
 defaults:
-  storage: "NFS_SERVER"           # Storage por defecto
-  memory: 2048                    # RAM en MB
-  cores: 2                        # Número de cores
+  # storage: "NFS_SERVER"         # O usa DEFAULT_STORAGE en .env
+  # memory: 2048                  # O usa DEFAULT_MEMORY en .env
+  # cores: 2                      # O usa DEFAULT_CORES en .env
   sockets: 1                      # Número de sockets
   ostype: "l26"                   # Tipo de OS (l26 = Linux 2.6+)
   network_type: "dhcp"            # dhcp o static
 
   # Imágenes cloud disponibles
   # Estas rutas deben existir en tu servidor Proxmox
+  # También puedes configurarlas en .env con IMAGE_UBUNTU22, IMAGE_UBUNTU24, etc.
   images:
     ubuntu22: "/var/lib/vz/template/iso/jammy-server-cloudimg-amd64.img"
     ubuntu24: "/var/lib/vz/template/iso/noble-server-cloudimg-amd64.img"
-    debian12: "/var/lib/vz/template/iso/debian-12-generic-amd64.img"
+    debian12: "/var/lib/vz/template/iso/debian-12-generic-amd64.qcow2"
     rocky9: "/var/lib/vz/template/iso/Rocky-9-GenericCloud.latest.x86_64.qcow2"
 
   # Snippet de vendor cloud-init (opcional)

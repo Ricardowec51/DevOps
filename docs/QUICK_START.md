@@ -18,28 +18,38 @@ source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 ```
 
-### 2. Configurar Proxmox
+### 2. Configurar Credenciales
 
 ```bash
-# Copiar ejemplo de configuración
-cp config.yaml.example config.yaml
+# Copiar archivo de variables de entorno
+cp .env.example .env
 
 # Editar con tus credenciales
-nano config.yaml
+nano .env
+
+# Restringir permisos
+chmod 600 .env
 ```
 
-Configuración mínima:
-```yaml
-proxmox:
-  host: "192.168.1.100"
-  user: "root@pam"
-  password: "tu_password"
+Configuración mínima en `.env`:
+```bash
+# Proxmox
+PROXMOX_HOST=192.168.1.100
+PROXMOX_USER=root@pam
+PROXMOX_PASSWORD=tu_password_aqui
 
-defaults:
-  storage: "local-lvm"
-  images:
-    ubuntu24: "/var/lib/vz/template/iso/noble-server-cloudimg-amd64.img"
+# VMs
+VM_DEFAULT_USER=rwagner
+VM_DEFAULT_PASSWORD=password_vms
+
+# Defaults
+DEFAULT_STORAGE=local-lvm
+
+# Imagen Cloud
+IMAGE_UBUNTU24=/var/lib/vz/template/iso/noble-server-cloudimg-amd64.img
 ```
+
+**IMPORTANTE:** NO pongas credenciales en `config.yaml`, usa `.env` siempre.
 
 ### 3. Descargar Imagen Cloud en Proxmox
 

@@ -1,7 +1,12 @@
 # Archivos de configuración sensibles
 config.yaml
+.env
+.env.local
+.env.*.local
 *.secrets
 *.passwords
+*.key
+*.pem
 
 # Logs
 *.log

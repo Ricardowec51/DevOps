@@ -7,10 +7,15 @@ Cloud-init con imágenes cloud de Ubuntu y snippet único
 import yaml
 import logging
 import sys
+import os
 import argparse
 from typing import Dict, List
 from proxmoxer import ProxmoxAPI
 import requests
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde .env
+load_dotenv()
 
 requests.packages.urllib3.disable_warnings()
 
@@ -29,16 +34,26 @@ class ProxmoxVMCreator:
     def __init__(self, config_file='config.yaml'):
         with open(config_file) as f:
             self.config = yaml.safe_load(f)
-        
-        px = self.config['proxmox']
+
+        # Obtener credenciales Proxmox (prioridad: .env > config.yaml)
+        px = self.config.get('proxmox', {})
+        px_host = os.getenv('PROXMOX_HOST', px.get('host'))
+        px_user = os.getenv('PROXMOX_USER', px.get('user'))
+        px_password = os.getenv('PROXMOX_PASSWORD', px.get('password'))
+        px_verify_ssl = os.getenv('PROXMOX_VERIFY_SSL', str(px.get('verify_ssl', False))).lower() == 'true'
+
+        if not all([px_host, px_user, px_password]):
+            logger.error("❌ Faltan credenciales de Proxmox (verifica .env o config.yaml)")
+            sys.exit(1)
+
         try:
             self.proxmox = ProxmoxAPI(
-                px['host'],
-                user=px['user'],
-                password=px['password'],
-                verify_ssl=px.get('verify_ssl', False)
+                px_host,
+                user=px_user,
+                password=px_password,
+                verify_ssl=px_verify_ssl
             )
-            logger.info(f"✅ Conectado a Proxmox {px['host']}")
+            logger.info(f"✅ Conectado a Proxmox {px_host}")
         except Exception as e:
             logger.error(f"❌ Error de conexión: {e}")
             sys.exit(1)
@@ -61,12 +76,28 @@ class ProxmoxVMCreator:
                 base = templates[vm['template']].copy()
                 base.update(vm)
                 vm = base
-        
+
+        # Defaults desde config.yaml
         defaults = self.config.get('defaults', {})
+
+        # Override con variables de entorno si existen
+        env_defaults = {
+            'storage': os.getenv('DEFAULT_STORAGE'),
+            'memory': os.getenv('DEFAULT_MEMORY'),
+            'cores': os.getenv('DEFAULT_CORES'),
+            'disk_size': os.getenv('DEFAULT_DISK_SIZE'),
+        }
+
+        # Actualizar defaults con env vars (solo si existen)
+        for k, v in env_defaults.items():
+            if v is not None:
+                defaults[k] = int(v) if k in ['memory', 'cores'] else v
+
+        # Aplicar defaults a la VM
         for k, v in defaults.items():
             if k not in vm:
                 vm[k] = v
-        
+
         return vm
     
     def build_params(self, vm):
@@ -107,7 +138,7 @@ class ProxmoxVMCreator:
         
         # Red
         net_cfg = self.config.get('network', {})
-        bridge = vm.get('bridge', net_cfg.get('bridge', 'vmbr0'))
+        bridge = vm.get('bridge', os.getenv('NETWORK_BRIDGE', net_cfg.get('bridge', 'vmbr0')))
         model = vm.get('model', net_cfg.get('model', 'virtio'))
         params['net0'] = f"{model},bridge={bridge}"
         
@@ -124,29 +155,35 @@ class ProxmoxVMCreator:
         if 'description' in vm:
             params['description'] = vm['description']
         
-        # Credenciales cloud-init
+        # Credenciales cloud-init (prioridad: VM > .env > config.yaml)
         creds = vm.get('credentials', self.config.get('credentials', {}))
-        if 'user' in creds:
-            params['ciuser'] = creds['user']
-        if 'password' in creds:
-            params['cipassword'] = creds['password']
+        default_user = os.getenv('VM_DEFAULT_USER', creds.get('user', 'ubuntu'))
+        default_password = os.getenv('VM_DEFAULT_PASSWORD', creds.get('password'))
+
+        params['ciuser'] = creds.get('user', default_user)
+        if 'password' in creds or default_password:
+            params['cipassword'] = creds.get('password', default_password)
         
-        # Configuración de red
-        net_type = vm.get('network_type', self.config['defaults'].get('network_type', 'dhcp'))
+        # Configuración de red (prioridad: VM > .env > config.yaml)
+        net_cfg = self.config.get('network', {})
+        net_type = vm.get('network_type', self.config.get('defaults', {}).get('network_type', 'dhcp'))
+
         if net_type == 'static' and 'ip' in vm:
-            net_cfg = self.config['network']
             ip = vm['ip']
-            mask = vm.get('netmask', net_cfg.get('netmask', '24'))
-            gw = vm.get('gateway', net_cfg.get('gateway'))
+            mask = vm.get('netmask', os.getenv('NETWORK_NETMASK', net_cfg.get('netmask', '24')))
+            gw = vm.get('gateway', os.getenv('NETWORK_GATEWAY', net_cfg.get('gateway')))
             params['ipconfig0'] = f"ip={ip}/{mask},gw={gw}"
-            
-            dns = vm.get('nameserver', net_cfg.get('nameserver', '8.8.8.8'))
+
+            dns = vm.get('nameserver', os.getenv('NETWORK_NAMESERVER', net_cfg.get('nameserver', '8.8.8.8')))
             params['nameserver'] = dns
         else:
             params['ipconfig0'] = 'ip=dhcp'
         
-        # SSH keys
+        # SSH keys (prioridad: VM > .env > config.yaml)
         keys = creds.get('ssh_keys', [])
+        env_keys = os.getenv('VM_SSH_KEYS')
+        if env_keys and not keys:
+            keys = [k.strip() for k in env_keys.split(',') if k.strip()]
         if keys:
             params['sshkeys'] = '\n'.join(keys)
         
