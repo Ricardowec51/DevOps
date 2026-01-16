@@ -1,6 +1,88 @@
-# Proxmox VM Creator v3.0
+# Proxmox VM Creator v3.2.0
 
 Herramienta automatizada para crear y configurar máquinas virtuales en Proxmox VE usando **cloud images** y **cloud-init**. Simplifica el despliegue de infraestructura mediante archivos YAML declarativos.
+
+## 🚀 Inicio Rápido para Nuevos Usuarios
+
+**¿Primera vez aquí? Lee esto primero:** **[PRIMEROS_PASOS.md](PRIMEROS_PASOS.md)** - Guía paso a paso de 20 minutos que te lleva desde cero hasta tu primera VM funcionando.
+
+### Resumen Rápido
+
+Si ya sabes lo básico, aquí está el flujo completo:
+
+### 1️⃣ Instalación y Configuración Inicial (5 minutos)
+
+```bash
+# 1. Ir al directorio del proyecto
+cd /Users/rwagner/proxmox-vm-creator
+
+# 2. El entorno virtual ya está creado, solo instala dependencias
+./venv/bin/pip install -r requirements.txt
+
+# 3. Configurar credenciales
+cp .env.example .env
+nano .env  # Editar con tus credenciales de Proxmox
+
+# 4. Verificar que config.yaml existe
+cat config.yaml  # Debe mostrar la configuración
+```
+
+### 2️⃣ Preparar Cloud Images (SOLO UNA VEZ)
+
+Las cloud images deben estar en el storage compartido `NFS_SERVER`:
+
+```bash
+# Ver guía detallada
+cat SETUP_CLOUD_IMAGES.md
+
+# O usar el script automático
+./download_cloud_images.sh root@192.168.1.143
+```
+
+### 3️⃣ Crear Tu Primera VM (2 minutos)
+
+```bash
+# 1. Editar vms.yaml con tu VM
+nano vms.yaml
+
+# 2. Verificar con dry-run (NO crea nada, solo simula)
+./venv/bin/python create_vm.py --dry-run
+
+# 3. Crear la VM de verdad
+./venv/bin/python create_vm.py
+
+# 4. Iniciar la VM
+./venv/bin/python start_vms.py
+
+# 5. Verificar que está corriendo
+# 5. Verificar estado de ejecución
+./venv/bin/python check_vms.py
+```
+
+### 4️⃣ Conectar y Verificar
+
+```bash
+# 1. Esperar 2-3 minutos para que cloud-init complete (IMPORTANTE)
+sleep 180
+
+# 2. Inyección manual de claves (si es necesario)
+./force_copy_keys.sh
+
+# 3. Verificar conectividad SSH masiva
+./verify_ssh.sh
+
+# 4. Conectar individualmente
+ssh rwagner@<IP_DE_TU_VM>
+```
+
+## 📚 Documentación Completa
+
+- **[PRIMEROS_PASOS.md](PRIMEROS_PASOS.md)** - ⭐⭐⭐ Guía paso a paso para nuevos usuarios (20 min)
+- **[GUIA_RAPIDA.md](GUIA_RAPIDA.md)** - ⭐ Procedimientos detallados para crear, iniciar y eliminar VMs
+- **[SETUP_CLOUD_IMAGES.md](SETUP_CLOUD_IMAGES.md)** - Setup inicial de cloud images en NFS_SERVER
+- **[LOGGING.md](LOGGING.md)** - Sistema de logging y auditoría
+- **[INDICE.md](INDICE.md)** - Índice de toda la documentación
+- **[CHANGELOG.md](CHANGELOG.md)** - Historial de cambios y versiones
 
 ## Características
 
@@ -58,21 +140,75 @@ cp config.yaml.example config.yaml
 
 **IMPORTANTE:** Todas las credenciales sensibles deben ir en `.env`, NO en `config.yaml`. Ver [docs/SECURITY.md](docs/SECURITY.md) para más detalles.
 
+## 📂 Archivos Importantes (¿Qué hace cada archivo?)
+
+### 🔧 Archivos de Configuración
+
+| Archivo | ¿Para qué sirve? | ¿Debo editarlo? |
+|---------|------------------|-----------------|
+| **`.env`** | Credenciales de Proxmox (user, password, SSH keys) | ✅ SÍ - Copia de `.env.example` y edita con tus datos |
+| **`config.yaml`** | Configuración general (red, storage, nodos) | ⚠️ Ya está configurado, revisar si necesitas cambios |
+| **`vms.yaml`** | Lista de VMs a crear | ✅ SÍ - Copia de `vms.yaml.example` y define tus VMs |
+| **`templates.yaml`** | Plantillas reutilizables (small, medium, large, etc.) | ❌ NO - Ya está listo para usar |
+
+### 🐍 Scripts Python
+
+| Script | ¿Qué hace? | Ejemplo de uso |
+|--------|-----------|----------------|
+| **`create_vm.py`** | Crea VMs según `vms.yaml` | `./venv/bin/python create_vm.py` |
+| **`start_vms.py`** | Inicia todas las VMs | `./venv/bin/python start_vms.py` |
+| **`delete_vm.py`** | Elimina una VM específica | `./venv/bin/python delete_vm.py Nnuc13 2001` |
+| **`check_vms.py`** | Verifica estado de VMs | `./venv/bin/python check_vms.py` |
+| **`list_vms.py`** | Lista todas las VMs del cluster | `./venv/bin/python list_vms.py` |
+| **`list_nodes.py`** | Lista nodos disponibles | `./venv/bin/python list_nodes.py` |
+| **`delete_all_vms.py`** | **Elimina VMs en lote** (limpieza masiva) | `./venv/bin/python delete_all_vms.py` |
+
+### 📚 Documentación
+
+| Archivo | ¿Qué contiene? |
+|---------|----------------|
+| **`README.md`** | Este archivo - Guía de inicio |
+| **`INDICE.md`** | Índice de toda la documentación |
+| **`GUIA_RAPIDA.md`** | Comandos para crear/iniciar/eliminar VMs |
+| **`SETUP_CLOUD_IMAGES.md`** | Cómo descargar cloud images (setup inicial) |
+| **`LOGGING.md`** | Sistema de logs y auditoría |
+| **`CHANGELOG.md`** | Historial de cambios |
+
+### 📁 Directorios
+
+| Directorio | Contenido |
+|------------|-----------|
+| **`venv/`** | Entorno virtual Python (NO editar) |
+| **`logs/`** | Logs de ejecución con timestamp |
+| **`examples/`** | Ejemplos de configuración |
+| **`docs/`** | Documentación adicional |
+
 ## Estructura del Proyecto
 
 ```
 proxmox-vm-creator/
-├── create_vm.py           # Script principal
-├── config.yaml.example    # Plantilla de configuración
-├── config.yaml           # Configuración (NO en Git)
-├── vms.yaml              # Definición de VMs a crear
-├── templetes.yaml        # Templates reutilizables
-├── requirements.txt      # Dependencias Python
-├── README.md            # Este archivo
-├── .gitignore           # Archivos ignorados por Git
-└── examples/            # Ejemplos de configuración
-    ├── vms/             # Ejemplos de VMs
-    └── snippets/        # Snippets cloud-init
+├── create_vm.py              # ⭐ Script principal para crear VMs
+├── start_vms.py              # Iniciar VMs
+├── delete_vm.py              # Eliminar VMs
+├── check_vms.py              # Verificar estado
+│
+├── .env                      # 🔐 Credenciales (editar ESTE)
+├── .env.example              # Plantilla de credenciales
+├── config.yaml               # ⚙️ Configuración general
+├── config.yaml.example       # Plantilla de configuración
+├── vms.yaml                  # 📝 VMs a crear (editar ESTE)
+├── vms.yaml.example          # Plantilla de VMs
+├── templates.yaml            # Plantillas predefinidas
+│
+├── README.md                 # 📖 Esta guía
+├── GUIA_RAPIDA.md            # Comandos rápidos
+├── INDICE.md                 # Índice de documentación
+├── LOGGING.md                # Sistema de logs
+│
+├── venv/                     # Entorno virtual Python
+├── logs/                     # Logs de ejecución
+├── examples/                 # Ejemplos
+└── docs/                     # Documentación adicional
 ```
 
 ## Configuración
@@ -102,46 +238,116 @@ defaults:
     ubuntu24: "/path/to/noble-server-cloudimg-amd64.img"
 ```
 
-### 2. vms.yaml
+### 2. vms.yaml - Define QUÉ VMs crear
 
-Define las VMs a crear. Puedes usar templates o especificar todo manualmente:
+Este archivo lista las VMs que quieres crear. Puedes usar templates o especificar todo manualmente:
 
+**Ejemplo Simple (con DHCP):**
 ```yaml
 vms:
-  # VM simple con DHCP
-  - vmid: 2001
-    name: "web-server-01"
-    node: "pve"
-    template: "web-server"
-
-  # VM con IP estática
-  - vmid: 2002
-    name: "db-server-01"
-    node: "pve"
-    memory: 8192
-    cores: 4
-    disk_size: "100G"
-    network_type: "static"
-    ip: "192.168.1.100"
-    start: true
+  - vmid: 2001                    # ID único de la VM (100-999999)
+    name: "mi-servidor"           # Nombre descriptivo
+    node: "Nnuc13"                # Nodo donde crearla (Nnuc13, DELL, BOSC, msa, msn2)
+    template: "web-server"        # Usar template predefinido
 ```
 
-### 3. templetes.yaml
+**Ejemplo Completo (con IP estática):**
+```yaml
+vms:
+  - vmid: 2002
+    name: "db-server-01"
+    node: "DELL"
+    memory: 8192                  # RAM en MB
+    cores: 4                      # Número de CPUs
+    disk_size: "100G"             # Tamaño del disco
+    network_type: "static"        # "static" o "dhcp"
+    ip: "192.168.1.100"           # IP fija (solo si es static)
+    tags: "database,production"   # Tags opcionales
+    start: true                   # Iniciar automáticamente tras crear
+```
 
-Templates reutilizables para diferentes tipos de servidores:
+**Nodos disponibles:**
+- `Nnuc13` - Intel NUC
+- `DELL` - Servidor Dell
+- `BOSC` - Servidor Bosch
+- `msa` - Servidor MSA
+- `msn2` - Servidor MSN2
+
+### 3. templates.yaml - Define PLANTILLAS reutilizables
+
+Este archivo tiene configuraciones predefinidas que puedes reutilizar. **Ya viene configurado** con estos templates:
 
 ```yaml
 templates:
-  web-server:
+  small:                    # VM pequeña
+    memory: 2048
+    cores: 2
+    disk_size: "50G"
+
+  medium:                   # VM mediana
+    memory: 4096
+    cores: 4
+    disk_size: "100G"
+
+  large:                    # VM grande
+    memory: 8192
+    cores: 8
+    disk_size: "200G"
+
+  web-server:               # Servidor web
     memory: 4096
     cores: 4
     disk_size: "50G"
 
-  db-server:
+  db-server:                # Base de datos
     memory: 8192
     cores: 6
     disk_size: "200G"
+
+  docker-host:              # Host para Docker
+    memory: 8192
+    cores: 8
+    disk_size: "100G"
 ```
+
+**Cómo usar templates en vms.yaml:**
+```yaml
+vms:
+  - vmid: 2003
+    name: "web-prod-01"
+    node: "BOSC"
+    template: "web-server"    # ← Usa el template predefinido
+    ip: "192.168.1.50"        # Puedes sobrescribir valores
+```
+
+## 🛠️ Scripts Disponibles
+
+Este proyecto incluye varios scripts útiles:
+
+### Scripts Principales
+
+| Script | Descripción | Ejemplo de Uso |
+|--------|-------------|----------------|
+| `create_vm.py` | **Crear VMs** según vms.yaml | `./venv/bin/python create_vm.py` |
+| `start_vms.py` | **Iniciar todas las VMs** | `./venv/bin/python start_vms.py` |
+| `delete_vm.py` | **Eliminar una VM** específica | `./venv/bin/python delete_vm.py Nnuc13 2001` |
+| `check_vms.py` | **Verificar estado** de VMs creadas | `./venv/bin/python check_vms.py` |
+| `list_vms.py` | **Listar todas las VMs** del cluster | `./venv/bin/python list_vms.py` |
+| `list_nodes.py` | **Listar nodos** con estado | `./venv/bin/python list_nodes.py` |
+
+### Scripts de Utilidades
+
+| Script | Descripción |
+|--------|-------------|
+| `check_images.py` | Verifica cloud images disponibles |
+| `check_nfs_storage.py` | Inspecciona contenido de NFS_SERVER |
+| `check_vm_status.py` | Estado detallado de VMs específicas |
+| `download_cloud_images.sh` | Descarga cloud images a NFS_SERVER |
+| `update_config_for_nfs.sh` | Actualiza config.yaml para NFS |
+| `verify_ssh.sh` | **Verifica acceso SSH** a rango de IPs 21-28 |
+| `force_copy_keys.sh` | **Fuerza inyección SSH** usando `ssh-copy-id` |
+
+**Ver [GUIA_RAPIDA.md](GUIA_RAPIDA.md) para ejemplos detallados de uso.**
 
 ## Uso
 
@@ -325,6 +531,12 @@ MIT License - Ver archivo LICENSE para más detalles
 Ricardo Wagner
 
 ## Changelog
+
+### v3.2.0 (2026-01-16)
+- **Corrección SSH Crítica**: Solucionado el problema de doble codificación URL en claves SSH.
+- **Nuevos Scripts**: `delete_all_vms.py` para limpieza masiva y `verify_ssh.sh` para validación.
+- **Utilidad**: `force_copy_keys.sh` como fallback para inyección manual de claves.
+- Mejoras en robustez de borrado de VMs (espera activa de tareas).
 
 ### v3.0 (2026-01-10)
 - Soporte completo para cloud images
