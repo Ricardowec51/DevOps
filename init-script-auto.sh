@@ -2,7 +2,7 @@
 # ==============================================================================
 # Script Post-Instalacion VMs - No Interactivo (Auto)
 # Basado en init-script.sh de Ricardo
-# Pasos: Actualizar, Utilitarios, Hora, Zsh+Aliases, Expandir Disco
+# Pasos: Expandir Disco, Actualizar, Utilitarios, Hora, Zsh+Aliases
 # ==============================================================================
 
 set -e
@@ -12,6 +12,28 @@ LOG="/var/log/init-script-auto.log"
 exec > >(tee -a "$LOG") 2>&1
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Iniciando configuracion post-instalacion..."
+
+# ------------------------------------------------------------------------------
+# Paso 8: Expandir disco LVM (PRIMERO para tener espacio)
+# ------------------------------------------------------------------------------
+echo ">>> Paso 8: Expandiendo disco LVM..."
+ROOT_PART=$(findmnt / -no SOURCE)
+DISK=$(lsblk -no pkname $ROOT_PART | head -n 1)
+
+if [[ $ROOT_PART == /dev/mapper/* ]]; then
+    PV_DEVICE=$(pvs --noheadings -o pv_name | xargs)
+    PART_NUM=$(echo $PV_DEVICE | grep -o '[0-9]*$')
+    LV_PATH=$(lvs --noheadings -o lv_path | xargs)
+
+    swapoff -a || true
+    parted /dev/$DISK resizepart $PART_NUM 100% --script || true
+    pvresize $PV_DEVICE || true
+    lvextend -l +100%FREE $LV_PATH || true
+    resize2fs $LV_PATH || true
+    echo ">>> Disco expandido: $(df -h / | tail -1 | awk '{print $2}')"
+else
+    echo ">>> No se detecto LVM, omitiendo expansion."
+fi
 
 # ------------------------------------------------------------------------------
 # Paso 3: Actualizar sistema
@@ -126,28 +148,6 @@ ZSHRC
     chown $USER_NAME:$USER_NAME "$USER_HOME/.zshrc"
     chsh -s "$(which zsh)" $USER_NAME
     echo ">>> Zsh configurado para $USER_NAME."
-fi
-
-# ------------------------------------------------------------------------------
-# Paso 8: Expandir disco LVM
-# ------------------------------------------------------------------------------
-echo ">>> Paso 8: Expandiendo disco LVM..."
-ROOT_PART=$(findmnt / -no SOURCE)
-DISK=$(lsblk -no pkname $ROOT_PART | head -n 1)
-
-if [[ $ROOT_PART == /dev/mapper/* ]]; then
-    PV_DEVICE=$(pvs --noheadings -o pv_name | xargs)
-    PART_NUM=$(echo $PV_DEVICE | grep -o '[0-9]*$')
-    LV_PATH=$(lvs --noheadings -o lv_path | xargs)
-
-    swapoff -a || true
-    parted /dev/$DISK resizepart $PART_NUM 100% --script || true
-    pvresize $PV_DEVICE || true
-    lvextend -l +100%FREE $LV_PATH || true
-    resize2fs $LV_PATH || true
-    echo ">>> Disco expandido: $(df -h / | tail -1 | awk '{print $2}')"
-else
-    echo ">>> No se detecto LVM, omitiendo expansion."
 fi
 
 # ------------------------------------------------------------------------------
