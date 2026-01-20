@@ -3,7 +3,7 @@ import yaml
 import subprocess
 import sys
 
-def load_vms(file='vms.yaml'):
+def load_vms(file='config.yaml'):
     with open(file) as f:
         return yaml.safe_load(f).get('vms', [])
 
