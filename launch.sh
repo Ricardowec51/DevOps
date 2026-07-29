@@ -2,13 +2,7 @@
 # Launcher for Proxmox VM Creator
 # Placed in user root for easy access
 
-PROJECT_DIR="$HOME/proxmox-vm-creator"
-
-# Check if project exists
-if [ ! -d "$PROJECT_DIR" ]; then
-    echo "❌ Error: Project directory $PROJECT_DIR not found."
-    exit 1
-fi
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "$PROJECT_DIR"
 

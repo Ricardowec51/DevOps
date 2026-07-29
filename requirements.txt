@@ -2,3 +2,5 @@ proxmoxer==2.0.1
 requests==2.31.0
 PyYAML==6.0.1
 python-dotenv==1.0.0
+questionary==2.1.1
+rich==15.0.0

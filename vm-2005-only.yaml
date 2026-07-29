@@ -1,0 +1,8 @@
+vms:
+  - vmid: 2005
+    name: "vpn-server"
+    node: "msn2"
+    template: "small"
+    network_type: "static"
+    ip: "192.168.1.30"
+    tags: "vpn,network"

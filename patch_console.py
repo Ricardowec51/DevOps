@@ -10,14 +10,13 @@ from dotenv import load_dotenv
 load_dotenv()
 requests.packages.urllib3.disable_warnings()
 
-# Load config
+# Load config (VMs ahora están en config.yaml)
 try:
     with open('config.yaml') as f:
         config = yaml.safe_load(f)
-    with open('vms.yaml') as f:
-        vms = yaml.safe_load(f)['vms']
+    vms = config.get('vms', [])
 except Exception as e:
-    print(f"Error loading files: {e}")
+    print(f"Error loading config: {e}")
     sys.exit(1)
 
 # Connect to Proxmox

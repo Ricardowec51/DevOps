@@ -1,0 +1,13 @@
+vms:
+  - vmid: 3009
+    name: "k3s-worker-06"
+    node: "msa"
+    memory: 24576
+    cores: 8
+    ip: "192.168.1.79"
+    network_type: "static"
+    tags: "kubernetes,worker"
+    disk_size: "400G"
+    storage: "TRUENAS"
+    start: true
+    image: "ubuntu24"

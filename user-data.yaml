@@ -1,0 +1,24 @@
+#cloud-config
+# Snippet genérico para VMs - hostname viene de Proxmox cloud-init
+
+preserve_hostname: false
+
+package_update: true
+package_upgrade: true
+
+users:
+  - name: rwagner
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    lock_passwd: false
+    passwd: $6$randomsalt$lffURSD5OXag59rmBSlCdFYptGJILyqYBIyIR871lj/3WZ1GNGd7K0xxJXHt/LUdOB7Mg7P.UzsPsJRXHrpDg0
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPMQH1D84SmyOXpHHfUyBxEuEsrE9flv3/bAoz/TDSLI rwagner@k3s-admin
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ8uNa0To6cr01R7/3w2sVBllB0HNkNeV3SyVIo8jgq9 rwagner@Mac-mini.local
+
+packages:
+  - qemu-guest-agent
+
+runcmd:
+  - systemctl enable --now qemu-guest-agent

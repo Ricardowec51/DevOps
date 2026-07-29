@@ -1,0 +1,116 @@
+# Proxmox VM Creator - Archivo de VMs a Crear
+# Copia este archivo a 'vms.yaml' y edita según tus necesidades
+#
+# INSTRUCCIONES:
+# 1. Copia: cp vms.yaml.example vms.yaml
+# 2. Edita vms.yaml con las VMs que quieres crear
+# 3. Prueba con: ./venv/bin/python create_vm.py --dry-run
+# 4. Crea las VMs: ./venv/bin/python create_vm.py
+
+vms:
+  # ==============================================================================
+  # EJEMPLO 1: VM simple con DHCP usando template
+  # ==============================================================================
+  - vmid: 100                       # ID único (100-999999)
+    name: "test-vm-01"              # Nombre de la VM
+    node: "Nnuc13"                  # Nodo: Nnuc13, DELL, BOSC, msa, msn2
+    template: "small"               # Template: small, medium, large, web-server, db-server, docker-host
+    # La VM obtendrá IP automáticamente por DHCP
+
+  # ==============================================================================
+  # EJEMPLO 2: VM con IP estática (sin template)
+  # ==============================================================================
+  - vmid: 101
+    name: "web-prod-01"
+    node: "DELL"
+    memory: 4096                    # RAM en MB
+    cores: 4                        # Número de CPUs
+    disk_size: "50G"                # Tamaño del disco (10G, 50G, 100G, etc.)
+    network_type: "static"          # Tipo de red: "static" o "dhcp"
+    ip: "192.168.1.100"             # IP fija (requerido si network_type: static)
+    tags: "web,production"          # Tags opcionales (separados por comas)
+    start: true                     # Iniciar automáticamente tras crear (true/false)
+
+  # ==============================================================================
+  # EJEMPLO 3: VM usando template + sobrescribiendo valores
+  # ==============================================================================
+  - vmid: 102
+    name: "db-server-01"
+    node: "BOSC"
+    template: "db-server"           # Usa template db-server (8GB RAM, 6 cores, 200G disk)
+    ip: "192.168.1.101"             # Sobrescribe para usar IP estática
+    network_type: "static"          # Sobrescribe para usar red estática
+    disk_size: "500G"               # Sobrescribe el tamaño del disco
+    tags: "database,production,postgresql"
+
+  # ==============================================================================
+  # EJEMPLO 4: Cluster de 3 VMs para Kubernetes
+  # ==============================================================================
+  - vmid: 201
+    name: "k8s-master-01"
+    node: "BOSC"
+    template: "large"
+    ip: "192.168.1.110"
+    network_type: "static"
+    tags: "kubernetes,master"
+    start: true
+
+  - vmid: 202
+    name: "k8s-worker-01"
+    node: "DELL"
+    template: "large"
+    ip: "192.168.1.111"
+    network_type: "static"
+    tags: "kubernetes,worker"
+    start: true
+
+  - vmid: 203
+    name: "k8s-worker-02"
+    node: "msa"
+    template: "large"
+    ip: "192.168.1.112"
+    network_type: "static"
+    tags: "kubernetes,worker"
+    start: true
+
+# ==============================================================================
+# TEMPLATES DISPONIBLES (definidos en templates.yaml):
+# ==============================================================================
+# - small:        2GB RAM, 2 cores, 50G disk
+# - medium:       4GB RAM, 4 cores, 100G disk
+# - large:        8GB RAM, 8 cores, 200G disk
+# - web-server:   4GB RAM, 4 cores, 50G disk
+# - db-server:    8GB RAM, 6 cores, 200G disk
+# - docker-host:  8GB RAM, 8 cores, 100G disk
+
+# ==============================================================================
+# NODOS DISPONIBLES:
+# ==============================================================================
+# - Nnuc13:  Intel NUC
+# - DELL:    Servidor Dell
+# - BOSC:    Servidor Bosch
+# - msa:     Servidor MSA
+# - msn2:    Servidor MSN2
+
+# ==============================================================================
+# CAMPOS DISPONIBLES:
+# ==============================================================================
+# OBLIGATORIOS:
+#   - vmid: ID único de la VM (100-999999)
+#   - name: Nombre de la VM
+#   - node: Nodo donde crear la VM
+#
+# OPCIONALES:
+#   - template: Usar template predefinido
+#   - memory: RAM en MB (default: 2048)
+#   - cores: CPUs (default: 2)
+#   - disk_size: Tamaño del disco con unidad (default: 50G)
+#   - network_type: "dhcp" o "static" (default: dhcp)
+#   - ip: IP estática (requerido si network_type: static)
+#   - gateway: Gateway personalizado (default: 192.168.1.1)
+#   - netmask: Máscara de red (default: 24)
+#   - nameserver: DNS (default: 8.8.8.8)
+#   - tags: Tags separados por comas
+#   - start: true/false - Iniciar tras crear (default: false)
+#   - description: Descripción de la VM
+#   - image: Imagen cloud a usar (ubuntu22, ubuntu24, debian12, debian13)

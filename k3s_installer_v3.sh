@@ -2,7 +2,7 @@
 
 # K3s HA Development Test Script - Complete Version with Tests and Usage Tracking
 # Ensures all phases execute including test application and cluster status
-# Version: 2.4-complete-with-usage-tracking
+# Version: 3.0-complete-HA-5workers
 # Filename: k3s_installer_complete.sh
 
 # Exit on error, undefined variable, or pipe failure
@@ -109,8 +109,8 @@ LB_RANGE="192.168.1.60-192.168.1.70"
 
 # SSH Configuration - PERSONALIZAR
 USER="rwagner"           # ← CAMBIAR POR TU USUARIO
-INTERFACE="eth0"         # ← Interfaz de red de las VMs Ubuntu Cloud
-CERT_NAME="id_rsa"
+INTERFACE="eth0"        # ← CAMBIAR POR TU INTERFAZ DE RED
+CERT_NAME="id_ed25519"
 CONFIG_FILE=~/.ssh/config
 
 # Arrays de nodos
@@ -131,7 +131,7 @@ DEBUG_LOG="k3s_debug_$(date +%Y%m%d-%H%M%S).log"
 BACKUP_DIR="./k3s-backup-$(date +%Y%m%d-%H%M%S)"
 
 # URLs específicas para las versiones compatibles
-METALLB_NAMESPACE_URL="https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-namespace.yaml"
+
 METALLB_NATIVE_URL="https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml"
 KUBEVIP_RBAC_URL="https://kube-vip.io/manifests/rbac.yaml"
 
@@ -671,13 +671,7 @@ join_worker_nodes() {
 install_metallb() {
 	log_structured "INFO" "Instalando MetalLB versión $METALLB_VERSION..."
 	
-	log_structured "INFO" "Aplicando namespace de MetalLB..."
-	if ssh -o ConnectTimeout=30 "$USER@$MASTER1" -i "/home/$USER/.ssh/$CERT_NAME" \
-		"sudo curl -s $METALLB_NAMESPACE_URL -o /var/lib/rancher/k3s/server/manifests/metallb-namespace.yaml"; then
-			debug_msg "✅ Namespace de MetalLB aplicado"
-		else
-			error_msg "❌ Error aplicando namespace de MetalLB"
-		fi
+
 	
 	log_structured "INFO" "Aplicando manifests nativos de MetalLB..."
 	if ssh -o ConnectTimeout=30 "$USER@$MASTER1" -i "/home/$USER/.ssh/$CERT_NAME" \

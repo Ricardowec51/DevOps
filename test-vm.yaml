@@ -1,0 +1,12 @@
+# VM de Prueba - Ubuntu 24.04
+vms:
+  - vmid: 9999
+    name: "test-vm-ubuntu24"
+    node: "Nnuc13"
+    memory: 2048
+    cores: 2
+    disk_size: "20G"
+    image: "ubuntu24"
+    network_type: "dhcp"
+    tags: "test,ubuntu24"
+    start: true

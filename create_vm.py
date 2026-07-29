@@ -98,9 +98,13 @@ class ProxmoxVMCreator:
         except:
             return {}
     
-    def load_vms(self, file='vms.yaml'):
-        with open(file) as f:
-            return yaml.safe_load(f).get('vms', [])
+    def load_vms(self, file=None):
+        """Carga VMs desde config.yaml (por defecto) o archivo especificado"""
+        if file and file != 'config.yaml':
+            with open(file) as f:
+                return yaml.safe_load(f).get('vms', [])
+        # Por defecto, usar config.yaml ya cargado
+        return self.config.get('vms', [])
     
     def merge_config(self, vm):
         if 'template' in vm:
@@ -195,19 +199,20 @@ class ProxmoxVMCreator:
         
         if 'tags' in vm:
             params['tags'] = vm['tags']
-        
+
         if 'description' in vm:
             params['description'] = vm['description']
-        
-        # Credenciales cloud-init (prioridad: VM > .env > config.yaml)
-        creds = vm.get('credentials', self.config.get('credentials', {}))
-        default_user = os.getenv('VM_DEFAULT_USER', creds.get('user', 'ubuntu'))
-        default_password = os.getenv('VM_DEFAULT_PASSWORD', creds.get('password'))
 
-        params['ciuser'] = creds.get('user', default_user)
-        if 'password' in creds or default_password:
-            params['cipassword'] = creds.get('password', default_password)
-        
+        # Cloud-init: User, Password, SSH Keys desde .env
+        params['ciuser'] = os.getenv('VM_DEFAULT_USER', 'rwagner')
+        params['cipassword'] = os.getenv('VM_DEFAULT_PASSWORD')
+
+        # SSH keys desde .env (separadas por coma)
+        ssh_keys_str = os.getenv('VM_SSH_KEYS', '')
+        if ssh_keys_str:
+            ssh_keys = ssh_keys_str.replace(',', '\n')
+            params['sshkeys'] = quote(ssh_keys, safe='')
+
         # Configuración de red (prioridad: VM > .env > config.yaml)
         net_cfg = self.config.get('network', {})
         net_type = vm.get('network_type', self.config.get('defaults', {}).get('network_type', 'dhcp'))
@@ -223,27 +228,6 @@ class ProxmoxVMCreator:
         else:
             params['ipconfig0'] = 'ip=dhcp'
         
-        # SSH keys (prioridad: VM > .env > config.yaml)
-        keys = creds.get('ssh_keys', [])
-        env_keys = os.getenv('VM_SSH_KEYS')
-        if env_keys and not keys:
-            keys = [k.strip() for k in env_keys.split(',') if k.strip()]
-        if keys:
-            # Limpiar keys y URL-encode para Proxmox API
-            cleaned_keys = [k.strip() for k in keys if k.strip()]
-            if cleaned_keys:
-                # Proxmox requiere keys URL-encoded, separadas por %0A (newline)
-                encoded_keys = [quote(key, safe='') for key in cleaned_keys]
-                params['sshkeys'] = '%0A'.join(encoded_keys)
-                logger.info(f"  🔑 Configuradas {len(cleaned_keys)} SSH key(s)")
-        
-        # ⭐ SNIPPET ÚNICO para TODAS las VMs
-        if 'snippet' in self.config['defaults']:
-            snippet = self.config['defaults']['snippet']
-            params['cicustom'] = f"vendor={snippet}"
-            logger.info(f"  📄 Usando snippet: {snippet}")
-        
-        return params
         return params
     
     def wait_for_task(self, node, upid):
@@ -287,6 +271,17 @@ class ProxmoxVMCreator:
             if vm.get('tags'):
                 logger.info(f"   Tags: {vm.get('tags')}")
 
+            # Limpiar known_hosts en Admin para esta IP (evita error de host key changed)
+            if vm.get('ip'):
+                ip = vm['ip']
+                admin_ip = self.config.get('admin', {}).get('ip', '192.168.1.20')
+                import subprocess
+                subprocess.run(
+                    f"ssh -o StrictHostKeyChecking=no {admin_ip} 'ssh-keygen -f ~/.ssh/known_hosts -R {ip}' 2>/dev/null",
+                    shell=True, capture_output=True
+                )
+                logger.info(f"   🔑 known_hosts limpiado para {ip}")
+
             params = self.build_params(vm)
 
             # Log de parámetros completos (para debugging)
@@ -310,6 +305,15 @@ class ProxmoxVMCreator:
             if upid and isinstance(upid, str):
                 if not self.wait_for_task(node, upid):
                     raise Exception(f"Fallo en creación de VM (Task: {upid})")
+
+            # Redimensionar disco si es mayor a 20GB
+            disk_size = str(vm.get('disk_size', '20G')).rstrip('G')
+            if int(disk_size) > 20:
+                logger.info(f"⏳ Redimensionando disco a {disk_size}GB...")
+                resize_upid = self.proxmox.nodes(node).qemu(vmid).resize.put(disk='scsi0', size=f"{disk_size}G")
+                if resize_upid and isinstance(resize_upid, str):
+                    self.wait_for_task(node, resize_upid)
+                logger.info(f"✅ Disco redimensionado a {disk_size}GB")
 
             elapsed_time = (datetime.now() - start_time).total_seconds()
 
@@ -364,14 +368,14 @@ class ProxmoxVMCreator:
         
         errors = []
         
-        # 1. Verificar duplicados en vms.yaml
+        # 1. Verificar duplicados en config.yaml
         seen_ids = set()
         seen_names = set()
         for vm in vms:
             if vm['vmid'] in seen_ids:
-                errors.append(f"❌ ID DUPLICADO en vms.yaml: {vm['vmid']}")
+                errors.append(f"❌ ID DUPLICADO en config.yaml: {vm['vmid']}")
             if vm['name'] in seen_names:
-                errors.append(f"❌ NOMBRE DUPLICADO en vms.yaml: {vm['name']}")
+                errors.append(f"❌ NOMBRE DUPLICADO en config.yaml: {vm['name']}")
             seen_ids.add(vm['vmid'])
             seen_names.add(vm['name'])
 
@@ -417,14 +421,14 @@ class ProxmoxVMCreator:
         logger.info("✅ Todas las comprobaciones PASARON. El plan es seguro.")
         return True
     
-    def run(self, dry_run=False, vms_file='vms.yaml'):
+    def run(self, dry_run=False, vms_file=None):
         execution_start = datetime.now()
 
         # Log de parámetros de ejecución
         logger.info(f"\n{'='*80}")
         logger.info(f"📋 PARÁMETROS DE EJECUCIÓN")
         logger.info(f"{'='*80}")
-        logger.info(f"Archivo de VMs: {vms_file}")
+        logger.info(f"Origen de VMs: {vms_file if vms_file else 'config.yaml'}")
         logger.info(f"Modo: {'DRY-RUN (Simulación)' if dry_run else 'PRODUCCIÓN (Creación real)'}")
         logger.info(f"{'='*80}\n")
 
@@ -532,7 +536,7 @@ def main():
     parser = argparse.ArgumentParser(description='Proxmox VM Creator con Cloud Images')
     parser.add_argument('--dry-run', action='store_true', help='Simular sin crear VMs')
     parser.add_argument('--config', default='config.yaml', help='Archivo de configuración')
-    parser.add_argument('--vms', default='vms.yaml', help='Archivo de VMs')
+    parser.add_argument('--vms', default=None, help='Archivo de VMs (usa config.yaml por defecto)')
     
     args = parser.parse_args()
 

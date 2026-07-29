@@ -1,0 +1,35 @@
+vms:
+  # VM con IP estática - db server
+  - vmid: 2002
+    name: "db-prod-01"
+    node: "DELL"
+    memory: 16384
+    cores: 8
+    disk_size: "200G"
+    network_type: "static"
+    ip: "192.168.1.31"
+    tags: "database,production"
+    onboot: true
+    start: true
+
+  # K8s master
+  - vmid: 2010
+    name: "k8s-master-01"
+    node: "BOSC"
+    memory: 8192
+    cores: 4
+    disk_size: "100G"
+    network_type: "static"
+    ip: "192.168.1.101"
+    tags: "kubernetes,master"
+
+  # K8s worker 01
+  - vmid: 2011
+    name: "k8s-worker-01"
+    node: "DELL"
+    memory: 16384
+    cores: 8
+    disk_size: "200G"
+    network_type: "static"
+    ip: "192.168.1.34"
+    tags: "kubernetes,worker"

@@ -1,0 +1,12 @@
+vms:
+  - vmid: 3001
+    name: "k3s-master-01"
+    node: "Nnuc13"
+    memory: 8192
+    cores: 4
+    ip: "192.168.1.21"
+    network_type: "static"
+    tags: "kubernetes,master"
+    disk_size: "200G"
+    start: true
+    image: "ubuntu24"

@@ -1,0 +1,275 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: homepage
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: homepage
+  namespace: homepage
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: homepage
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces", "pods", "nodes", "services", "endpoints", "configmaps"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes", "pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: homepage
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: homepage
+subjects:
+  - kind: ServiceAccount
+    name: homepage
+    namespace: homepage
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: homepage-secrets
+  namespace: homepage
+type: Opaque
+data:
+  HOMEPAGE_VAR_PROXMOX_URL:          aHR0cHM6Ly8xOTIuMTY4LjEuODg6ODAwNg==
+  HOMEPAGE_VAR_PROXMOX_TOKEN_ID:     cm9vdEBwYW0haG9tZXBhZ2U=
+  HOMEPAGE_VAR_PROXMOX_TOKEN_SECRET: ZmJlY2Q5MDQtM2JhYS00OGM0LTliZjYtZmQ0NDZlMjBlOTA1
+  HOMEPAGE_VAR_TRUENAS_URL:          aHR0cHM6Ly8xOTIuMTY4LjEuMTAw
+  HOMEPAGE_VAR_TRUENAS_API_KEY:      My16YUlsbFJhdUo2MFFDMVo0MTZza3hrdUs0Y0o0ZGpZNDhncEt5MXRONWh2YllRWmtGcGlYaG5XbVlsMXNEUGJq
+  HOMEPAGE_VAR_GRAFANA_URL:          aHR0cDovLzE5Mi4xNjguMS41OA==
+  HOMEPAGE_VAR_GRAFANA_USER:         YWRtaW4=
+  HOMEPAGE_VAR_GRAFANA_PASSWORD:     R25laGlkLjMw
+  HOMEPAGE_VAR_PROMETHEUS_URL:       aHR0cDovLzE5Mi4xNjguMS41Nzo5MDkw
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-config
+  namespace: homepage
+data:
+  settings.yaml: |
+    title: Mi Plataforma
+    theme: dark
+    color: slate
+    headerStyle: clean
+    layout:
+      Herramientas:
+        style: row
+        columns: 4
+      Infraestructura:
+        style: row
+        columns: 4
+      Monitoring:
+        style: row
+        columns: 3
+      Aplicaciones:
+        style: row
+        columns: 4
+
+  kubernetes.yaml: |
+    mode: cluster
+
+  widgets.yaml: |
+    - kubernetes:
+        cluster:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+          label: "k3s"
+        nodes:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+    - datetime:
+        text_size: xl
+        format:
+          timeStyle: short
+          dateStyle: short
+          hour12: false
+
+  services.yaml: |
+    - Herramientas:
+        - VM Creator:
+            href: http://192.168.1.20:7682
+            description: Gestión de VMs Proxmox (CLI web)
+            icon: mdi-console-#6366f1
+
+    - Infraestructura:
+        - Proxmox:
+            href: "{{HOMEPAGE_VAR_PROXMOX_URL}}"
+            description: Hipervisor (6 nodos)
+            icon: proxmox.png
+            widget:
+              type: proxmox
+              url: "{{HOMEPAGE_VAR_PROXMOX_URL}}"
+              username: "{{HOMEPAGE_VAR_PROXMOX_TOKEN_ID}}"
+              password: "{{HOMEPAGE_VAR_PROXMOX_TOKEN_SECRET}}"
+              node: msn2
+        - TrueNAS:
+            href: "{{HOMEPAGE_VAR_TRUENAS_URL}}"
+            description: Almacenamiento NAS
+            icon: truenas.png
+            widget:
+              type: truenas
+              url: "{{HOMEPAGE_VAR_TRUENAS_URL}}"
+              key: "{{HOMEPAGE_VAR_TRUENAS_API_KEY}}"
+              enablePools: true
+        - Rancher:
+            href: https://192.168.1.29
+            description: Gestión K3s
+            icon: rancher.png
+        - Longhorn:
+            href: https://192.168.1.29/dashboard/c/local/longhorn
+            description: Storage distribuido
+            icon: longhorn.png
+
+    - Monitoring:
+        - Grafana:
+            href: "{{HOMEPAGE_VAR_GRAFANA_URL}}"
+            description: Métricas y dashboards
+            icon: grafana.png
+            widget:
+              type: grafana
+              url: "{{HOMEPAGE_VAR_GRAFANA_URL}}"
+              username: "{{HOMEPAGE_VAR_GRAFANA_USER}}"
+              password: "{{HOMEPAGE_VAR_GRAFANA_PASSWORD}}"
+        - Prometheus:
+            href: "{{HOMEPAGE_VAR_PROMETHEUS_URL}}"
+            description: Métricas del cluster
+            icon: prometheus.png
+            widget:
+              type: prometheus
+              url: "{{HOMEPAGE_VAR_PROMETHEUS_URL}}"
+        - Uptime Kuma:
+            href: http://192.168.1.30:3001
+            description: Monitor de servicios
+            icon: uptime-kuma.png
+
+    - Aplicaciones:
+        - Contactos Web:
+            href: http://192.168.1.56
+            description: Sitio web
+            icon: mdi-web-#3b82f6
+        - Contactos Admin:
+            href: http://192.168.1.53
+            description: Panel administración
+            icon: mdi-cog-#6366f1
+        - Factuscan:
+            href: http://192.168.1.59
+            description: Gestión documentos SRI
+            icon: mdi-file-document-#10b981
+        - PGAdmin:
+            href: http://192.168.1.60
+            description: Administración PostgreSQL
+            icon: pgadmin.png
+        - N8N:
+            href: http://192.168.1.234:5678
+            description: Automatización de flujos
+            icon: n8n.png
+        - Home Assistant:
+            href: http://192.168.1.154:8123
+            description: Automatización del hogar
+            icon: home-assistant.png
+        - Nginx Proxy Manager:
+            href: http://192.168.1.155:81
+            description: Proxy y SSL
+            icon: nginx-proxy-manager.png
+
+  bookmarks.yaml: |
+    []
+
+  docker.yaml: |
+    {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homepage
+  namespace: homepage
+  labels:
+    app: homepage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homepage
+  template:
+    metadata:
+      labels:
+        app: homepage
+    spec:
+      serviceAccountName: homepage
+      automountServiceAccountToken: true
+      containers:
+        - name: homepage
+          image: ghcr.io/gethomepage/homepage:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: homepage-secrets
+          env:
+            - name: HOMEPAGE_ALLOWED_HOSTS
+              value: "*"
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/settings.yaml
+              subPath: settings.yaml
+            - name: config
+              mountPath: /app/config/kubernetes.yaml
+              subPath: kubernetes.yaml
+            - name: config
+              mountPath: /app/config/widgets.yaml
+              subPath: widgets.yaml
+            - name: config
+              mountPath: /app/config/services.yaml
+              subPath: services.yaml
+            - name: config
+              mountPath: /app/config/bookmarks.yaml
+              subPath: bookmarks.yaml
+            - name: config
+              mountPath: /app/config/docker.yaml
+              subPath: docker.yaml
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: homepage-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homepage
+  namespace: homepage
+spec:
+  type: LoadBalancer
+  selector:
+    app: homepage
+  ports:
+    - port: 80
+      targetPort: 3000

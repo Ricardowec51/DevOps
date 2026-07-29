@@ -1,0 +1,6 @@
+- K3s HA cluster funcionando (8 nodos)
+  - MetalLB instalado (192.168.1.51-61)
+  - nginx test verificado
+  - Scripts arreglados y menú actualizado (opciones 15, 16)
+  - CLAUDE.md y README.md completos
+  - Código subido a GitHub
