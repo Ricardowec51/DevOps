@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 
 import feedparser
 from docx import Document
@@ -474,8 +476,8 @@ def store_document(docx_path, edition_num, cfg):
 
 
 def notify_generated(stored_path, edition_num, cfg, dry_run=False, external_ok=True):
-    """Envía un email liviano (sin adjunto) informando que el documento fue generado,
-    con la ubicación/URL donde quedó almacenado."""
+    """Envía un email informando que el documento fue generado, con el .docx
+    adjunto y la ubicación donde quedó almacenado en el disco externo."""
     ec = cfg["email"]
     today = datetime.now().strftime("%d/%m/%Y")
     file_url = stored_path.resolve().as_uri()
@@ -504,6 +506,17 @@ La Edición {edition_num} de PULSO a la IA fue generada y almacenada con éxito.
 Sistema automatizado PULSO a la IA
 """
     msg.attach(MIMEText(body, "plain", "utf-8"))
+
+    # Adjuntar el .docx para que el aviso por correo lleve la edición
+    try:
+        with open(stored_path, "rb") as f:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(f.read())
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", f'attachment; filename="{stored_path.name}"')
+        msg.attach(part)
+    except OSError as e:
+        log.warning(f"No se pudo adjuntar {stored_path} al correo: {e}. Se envía el aviso sin adjunto.")
 
     if dry_run:
         log.info(f"[DRY-RUN] Notificación preparada para {ec['to']} — no se envía")
