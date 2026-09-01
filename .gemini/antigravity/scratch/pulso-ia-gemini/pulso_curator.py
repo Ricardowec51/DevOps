@@ -123,7 +123,7 @@ def generate_with_codex(articles, cfg, edition_num):
 
     today = datetime.now().strftime("%d de %B de %Y")
 
-    prompt = f"""Eres el editor de "PULSO a la IA", publicación semanal de EMPRENDEDORES.LTD para ejecutivos del sector bancario, comercial y agroindustrial en Ecuador y Latinoamérica.
+    prompt = f"""Eres el editor de "PULSO a la IA", publicación semanal de EMPRENDEDORES.LTD para ejecutivos de todos los sectores de la economía en Ecuador y Latinoamérica.
 
 Edición #{edition_num} — {today}
 
@@ -135,7 +135,7 @@ Tu tarea: Selecciona los artículos MÁS RELEVANTES para ejecutivos latinoameric
 ESTRUCTURA OBLIGATORIA (respeta exactamente estos marcadores):
 
 ===RESUMEN_EJECUTIVO===
-[Exactamente 2 párrafos bien estructurados (un total de 130-155 palabras para todo el resumen ejecutivo). Debe contener la tesis editorial de la semana y el impacto en banca, comercio o agroindustria en LATAM, redactado con estilo formal de nivel ejecutivo. Aporta profundidad para llenar la página de forma equilibrada.]
+[Exactamente 2 párrafos bien estructurados (un total de 130-155 palabras para todo el resumen ejecutivo). Debe contener la tesis editorial de la semana y el impacto en todos los sectores de la economía en LATAM, redactado con estilo formal de nivel ejecutivo. Aporta profundidad para llenar la página de forma equilibrada.]
 
 ===NOTICIAS_DESTACADAS===
 ---NOTICIA_1---
