@@ -475,21 +475,24 @@ def store_document(docx_path, edition_num, cfg):
         return docx_path, False
 
 
-def notify_generated(stored_path, edition_num, cfg, dry_run=False, external_ok=True):
+def notify_generated(stored_path, edition_num, cfg, dry_run=False, external_ok=True, local_path=None):
     """Envía un email informando que el documento fue generado, con el .docx
-    adjunto y la ubicación donde quedó almacenado en el disco externo."""
+    adjunto y las rutas (local y disco externo) donde quedó almacenado."""
     ec = cfg["email"]
     today = datetime.now().strftime("%d/%m/%Y")
-    file_url = stored_path.resolve().as_uri()
 
-    if external_ok:
-        ubicacion = f"📁 Ubicación (disco externo): {stored_path}\n🔗 URL: {file_url}"
-    else:
-        ubicacion = (
-            "⚠️ El disco externo no estaba disponible al momento de generar la edición — "
-            f"el documento quedó únicamente en almacenamiento local:\n"
-            f"📁 Ubicación: {stored_path}\n🔗 URL: {file_url}"
-        )
+    local_path = Path(local_path) if local_path else stored_path
+    lineas = [
+        f"📁 Copia local: {local_path}",
+        f"🔗 {local_path.resolve().as_uri()}",
+    ]
+    if external_ok and stored_path != local_path:
+        lineas.append(f"📁 Disco externo: {stored_path}")
+        lineas.append(f"🔗 {stored_path.resolve().as_uri()}")
+    elif not external_ok:
+        lineas.append("⚠️ El disco externo no estaba disponible al generar la edición — "
+                      "el documento quedó solo en la copia local de arriba.")
+    ubicacion = "\n".join(lineas)
 
     msg = MIMEMultipart()
     msg["From"]    = ec["from"]
@@ -566,7 +569,8 @@ def main():
             cfg = load_config()
             log.info(f"Almacenando y notificando edición {edition_num} con {docx_path}...")
             stored_path, external_ok = store_document(docx_path, edition_num, cfg)
-            notify_generated(stored_path, edition_num, cfg, dry_run=False, external_ok=external_ok)
+            notify_generated(stored_path, edition_num, cfg, dry_run=False,
+                             external_ok=external_ok, local_path=docx_path)
             sys.exit(0)
         except Exception as e:
             log.error(f"Error en --send-only: {e}")
@@ -615,12 +619,13 @@ def main():
     # 5. Ejecutar publisher formateador
     final_path = run_publisher(draft_path, edition_num, cfg)
 
-    # 6. Almacenar en disco externo y notificar por email (sin adjunto)
+    # 6. Almacenar en disco externo y notificar por email (con adjunto)
     if dry_run:
         log.info("[DRY-RUN] Documento generado localmente — no se almacena en disco externo ni se notifica")
     else:
         stored_path, external_ok = store_document(final_path, edition_num, cfg)
-        notify_generated(stored_path, edition_num, cfg, dry_run=dry_run, external_ok=external_ok)
+        notify_generated(stored_path, edition_num, cfg, dry_run=dry_run,
+                         external_ok=external_ok, local_path=final_path)
 
     # 7. Actualizar cache (no en dry-run, para no "quemar" artículos nuevos en una prueba)
     if not dry_run:
