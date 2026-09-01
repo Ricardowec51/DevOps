@@ -182,7 +182,7 @@ ANÁLISIS: [2-3 oraciones de análisis ejecutivo]
 CRITERIOS:
 - Priorizar noticias sobre banca, fintech, automatización, regulación IA, modelos de lenguaje
 - Lenguaje ejecutivo, no técnico
-- Perspectiva latinoamericana cuando sea posible
+- Perspectiva de todos los sectores de la economía cuando sea posible
 - Máximo 3 noticias, hasta 2 modelos (0 es válido), 2 tendencias
 - Modelos Destacados: solo modelos/herramientas nombrados textualmente en los artículos provistos. Terminantemente prohibido inventar nombres o versiones para llenar la sección.
 - Los hashtags deben reflejar los temas específicos de esta edición (empresas, eventos, países, tecnologías mencionadas)
