@@ -573,7 +573,7 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
     
     resumen_desc = f"Tesis: {truncate_text(resumen_ejecutivo[0], 50)}" if resumen_ejecutivo else "Tesis de la semana"
     noticias_desc = format_list_index([n['titulo'] for n in noticias], 50)
-    modelos_desc = format_list_index([m['titulo'] for m in modelos], 50)
+    modelos_desc = format_list_index([m['titulo'] for m in modelos], 50) or "Sin novedades esta semana"
     tendencias_desc = format_list_index([t['titulo'] for t in tendencias], 50)
     veredicto_desc = f"{num_acciones} acciones clave para implementar esta semana"
     
@@ -654,7 +654,17 @@ def generate(edition, date_str, resumen_ejecutivo, noticias, modelos, tendencias
     tracker.check_break_before_section(doc, section_height=150)
     add_section_header(doc, "🤖 Modelos Destacados")
     tracker.add_height(35)
-    
+
+    if not modelos:
+        p = doc.add_paragraph()
+        p.paragraph_format.space_before = Pt(8)
+        p.paragraph_format.space_after = Pt(6)
+        r = p.add_run("Sin lanzamientos de modelos o herramientas relevantes esta semana.")
+        r.italic = True
+        r.font.size = Pt(12)
+        r.font.color.rgb = RGBColor(0x60, 0x60, 0x60)
+        tracker.add_height(20)
+
     for i, m in enumerate(modelos, 1):
         p = doc.add_paragraph()
         p.paragraph_format.space_before = Pt(12)

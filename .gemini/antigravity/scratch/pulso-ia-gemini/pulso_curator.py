@@ -151,12 +151,13 @@ URL: [url fuente]
 [igual estructura]
 
 ===MODELOS_DESTACADOS===
+[SOLO modelos, herramientas o productos de IA que aparezcan EXPLÍCITAMENTE nombrados en los ARTÍCULOS DISPONIBLES de arriba. Entre 0 y 2. Está PROHIBIDO inventar nombres, versiones, fechas o características: si ningún artículo menciona un modelo/herramienta concreto, deja esta sección con una sola línea que diga exactamente SIN NOVEDADES DE MODELOS ESTA SEMANA y nada más. Prefiere 0 o 1 modelo real antes que rellenar con uno inventado.]
 ---MODELO_1---
-TÍTULO: [nombre del modelo/herramienta]
-DESCRIPCIÓN: [2-3 oraciones]
-RECOMENDACIÓN: [para qué usarlo]
+TÍTULO: [nombre exacto tal como aparece en el artículo fuente]
+DESCRIPCIÓN: [2-3 oraciones, solo con información que esté en el artículo]
+RECOMENDACIÓN: [para qué usarlo, en términos ejecutivos]
 ---MODELO_2---
-[igual]
+[igual estructura, únicamente si hay un segundo modelo real nombrado en los artículos]
 
 ===TENDENCIAS_MERCADO===
 ---TENDENCIA_1---
@@ -182,7 +183,8 @@ CRITERIOS:
 - Priorizar noticias sobre banca, fintech, automatización, regulación IA, modelos de lenguaje
 - Lenguaje ejecutivo, no técnico
 - Perspectiva latinoamericana cuando sea posible
-- Máximo 3 noticias, 2 modelos, 2 tendencias
+- Máximo 3 noticias, hasta 2 modelos (0 es válido), 2 tendencias
+- Modelos Destacados: solo modelos/herramientas nombrados textualmente en los artículos provistos. Terminantemente prohibido inventar nombres o versiones para llenar la sección.
 - Los hashtags deben reflejar los temas específicos de esta edición (empresas, eventos, países, tecnologías mencionadas)
 - Responde EXCLUSIVAMENTE en español. No uses caracteres de otros alfabetos (chino, cirílico, árabe, coreano, japonés, etc.) bajo ninguna circunstancia, ni siquiera aislados dentro de una palabra.
 - No incluyas URLs en las secciones de Modelos ni de Tendencias — el campo URL solo aplica a Noticias Destacadas.
