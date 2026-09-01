@@ -11,6 +11,11 @@ BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG="$BASE_DIR/logs/cron.log"
 PYTHON="$BASE_DIR/.venv/bin/python3"
 
+# cron arranca con un PATH mínimo; el curador (`codex exec`) y el chequeo de
+# sesión de abajo necesitan encontrar el binario `codex`.
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
+CODEX_BIN="$(command -v codex || echo "$HOME/.local/bin/codex")"
+
 NOTIFY=0
 DRY_RUN=0
 for arg in "$@"; do
@@ -53,6 +58,17 @@ if [ "$DRY_RUN" -eq 0 ] && [ -f "$OUTPUT_FILE" ]; then
         exit $EXIT_CODE
     fi
     exit 0
+fi
+
+# Preflight: el curador usa `codex exec`. Si no hay sesión de Codex, abortar
+# temprano con aviso claro en vez de dejar que falle el pipeline entero.
+if ! "$CODEX_BIN" login status >/dev/null 2>&1; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Codex sin sesión activa ('$CODEX_BIN login status' falló). Ejecutar 'codex login'. Aborta." >> "$LOG"
+    if [ "$NOTIFY" -eq 1 ] && [ "$DRY_RUN" -eq 0 ]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Enviando email de alerta (Codex sin sesión)..." >> "$LOG"
+        "$PYTHON" "$BASE_DIR/pulso_notify_fail.py" "$EDITION" "codex-no-session" >> "$LOG" 2>&1
+    fi
+    exit 1
 fi
 
 # Ejecutar pipeline completo
