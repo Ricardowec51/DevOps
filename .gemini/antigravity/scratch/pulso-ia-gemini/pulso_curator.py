@@ -3,19 +3,16 @@
 PULSO a la IA — Curador de noticias
 EMPRENDEDORES.LTD
 
-Pipeline: RSS feeds → Claude Haiku (clasifica) → borrador .docx → formateador Node.js → Gmail
+Pipeline: RSS feeds → Codex CLI (OpenAI, clasifica) → borrador .docx → formateador pulso_publisher.py → disco externo + notificación por email
 """
 
-import os, sys, json, yaml, hashlib, smtplib, logging, subprocess, re, urllib.request, urllib.parse
+import sys, json, yaml, hashlib, smtplib, logging, subprocess, re, shutil, urllib.request, urllib.parse
 from datetime import datetime, timedelta
 from pathlib import Path
 from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
-from email import encoders
 
 import feedparser
-from google import genai
 from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -34,6 +31,10 @@ logging.basicConfig(
     handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()]
 )
 log = logging.getLogger(__name__)
+
+# Detecta fugas multilingües del modelo (chino, japonés, coreano, cirílico, árabe)
+# que no deberían aparecer en un borrador redactado en español.
+NON_LATIN_RE = re.compile(r"[一-鿿぀-ヿ가-힯Ѐ-ӿ؀-ۿ]")
 
 
 def load_config():
@@ -105,14 +106,12 @@ def fetch_feeds(cfg, cache):
     return articles[:cfg.get("max_articles", 60)]
 
 
-def generate_with_gemini(articles, cfg, edition_num):
-    """Google Gemini clasifica y redacta el borrador editorial."""
-    api_key = cfg.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        log.error("API Key de Gemini no configurada en config.yaml ni en la variable de entorno GEMINI_API_KEY")
-        sys.exit(1)
-
-    client = genai.Client(api_key=api_key)
+def generate_with_codex(articles, cfg, edition_num):
+    """Codex CLI (OpenAI) clasifica y redacta el borrador editorial."""
+    codex_cfg  = cfg.get("codex", {})
+    codex_bin  = codex_cfg.get("binary", "codex")
+    model_name = codex_cfg.get("model") or "(login por defecto)"
+    timeout    = codex_cfg.get("timeout", 600)
 
     articles_text = "\n\n".join([
         f"[{i+1}] FUENTE: {a['source']} | CATEGORÍA: {a['category']}\n"
@@ -121,7 +120,6 @@ def generate_with_gemini(articles, cfg, edition_num):
     ])
 
     today = datetime.now().strftime("%d de %B de %Y")
-    model_name = cfg.get("gemini_model", "gemini-2.5-flash")
 
     prompt = f"""Eres el editor de "PULSO a la IA", publicación semanal de EMPRENDEDORES.LTD para ejecutivos del sector bancario, comercial y agroindustrial en Ecuador y Latinoamérica.
 
@@ -184,27 +182,58 @@ CRITERIOS:
 - Perspectiva latinoamericana cuando sea posible
 - Máximo 3 noticias, 2 modelos, 2 tendencias
 - Los hashtags deben reflejar los temas específicos de esta edición (empresas, eventos, países, tecnologías mencionadas)
+- Responde EXCLUSIVAMENTE en español. No uses caracteres de otros alfabetos (chino, cirílico, árabe, coreano, japonés, etc.) bajo ninguna circunstancia, ni siquiera aislados dentro de una palabra.
+- No incluyas URLs en las secciones de Modelos ni de Tendencias — el campo URL solo aplica a Noticias Destacadas.
 """
 
-    import time
-    log.info(f"Clasificando con Google Gemini ({model_name})...")
+    import time, tempfile
+    log.info(f"Clasificando con Codex CLI (modelo: {model_name})...")
+
+    cmd = [codex_bin, "exec", "-s", "read-only", "--skip-git-repo-check", "--color", "never"]
+    if codex_cfg.get("model"):
+        cmd += ["-m", codex_cfg["model"]]
+    if codex_cfg.get("reasoning_effort"):
+        cmd += ["-c", f"model_reasoning_effort={codex_cfg['reasoning_effort']}"]
+
     max_retries = 3
     for attempt in range(max_retries):
+        out_file = None
         try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt,
+            with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as tf:
+                out_file = tf.name
+            proc = subprocess.run(
+                cmd + ["-o", out_file, prompt],
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
             )
-            return response.text
+            if proc.returncode != 0:
+                raise RuntimeError(
+                    f"codex exec devolvió código {proc.returncode}: {(proc.stderr or '')[-500:].strip()}"
+                )
+            text = Path(out_file).read_text().strip()
+            if not text:
+                raise ValueError("codex exec no escribió nada en --output-last-message")
+            foreign_chars = NON_LATIN_RE.findall(text)
+            if foreign_chars:
+                raise ValueError(
+                    f"Respuesta contiene caracteres no latinos ({''.join(sorted(set(foreign_chars)))}) "
+                    f"— probable fuga multilingüe del modelo"
+                )
+            return text
         except Exception as e:
-            log.warning(f"Intento {attempt+1} falló al llamar a Gemini API: {e}")
+            log.warning(f"Intento {attempt+1} falló al llamar a Codex CLI: {e}")
             if attempt < max_retries - 1:
                 sleep_time = (attempt + 1) * 4
                 log.info(f"Reintentando en {sleep_time} segundos...")
                 time.sleep(sleep_time)
             else:
-                log.error(f"Error definitivo llamando a Gemini API después de {max_retries} intentos: {e}")
+                log.error(f"Error definitivo llamando a Codex CLI después de {max_retries} intentos: {e}")
                 sys.exit(1)
+        finally:
+            if out_file:
+                Path(out_file).unlink(missing_ok=True)
 
 
 def parse_draft(draft_text):
@@ -422,44 +451,62 @@ def run_publisher(draft_path, edition_num, cfg):
         return draft_path
 
 
-def send_email(docx_path, edition_num, cfg, dry_run=False):
-    """Envía el .docx por SMTP."""
+def store_document(docx_path, edition_num, cfg):
+    """Copia el .docx final al directorio de almacenamiento en el disco externo.
+
+    Si el disco externo no está montado (p.ej. el cron corre sin el disco conectado),
+    el documento se queda solo en la copia local de /output y se reporta el fallback
+    en la notificación en lugar de fallar todo el pipeline.
+    """
+    storage_cfg = cfg.get("storage", {})
+    external_dir = Path(storage_cfg.get("external_dir", "/Volumes/Externo/PULSO_a_la_IA/documentos"))
+
+    try:
+        external_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = external_dir / docx_path.name
+        shutil.copy2(docx_path, dest_path)
+        log.info(f"Documento almacenado en disco externo: {dest_path}")
+        return dest_path, True
+    except OSError as e:
+        log.warning(f"No se pudo almacenar en disco externo ({external_dir}): {e}. "
+                    f"Se mantiene solo la copia local en {docx_path}")
+        return docx_path, False
+
+
+def notify_generated(stored_path, edition_num, cfg, dry_run=False, external_ok=True):
+    """Envía un email liviano (sin adjunto) informando que el documento fue generado,
+    con la ubicación/URL donde quedó almacenado."""
     ec = cfg["email"]
     today = datetime.now().strftime("%d/%m/%Y")
+    file_url = stored_path.resolve().as_uri()
+
+    if external_ok:
+        ubicacion = f"📁 Ubicación (disco externo): {stored_path}\n🔗 URL: {file_url}"
+    else:
+        ubicacion = (
+            "⚠️ El disco externo no estaba disponible al momento de generar la edición — "
+            f"el documento quedó únicamente en almacenamiento local:\n"
+            f"📁 Ubicación: {stored_path}\n🔗 URL: {file_url}"
+        )
 
     msg = MIMEMultipart()
     msg["From"]    = ec["from"]
     msg["To"]      = ec["to"]
-    msg["Subject"] = f"PULSO a la IA — Edición {edition_num} | {today}"
+    msg["Subject"] = f"✅ PULSO a la IA — Edición {edition_num} generada ({today})"
 
-    body = f"""Estimado/a,
+    body = f"""Hola Ricardo,
 
-Adjunto encontrará la Edición {edition_num} de PULSO a la IA, su resumen semanal de tendencias en Inteligencia Artificial para el sector ejecutivo.
+La Edición {edition_num} de PULSO a la IA fue generada y almacenada con éxito.
 
-📌 Esta edición incluye:
-• Noticias destacadas de IA con impacto en banca y agroindustria
-• Modelos y herramientas relevantes
-• Tendencias del mercado
-• Veredicto accionable con recomendaciones concretas
-
-📩 Suscríbete: https://emprendedores.ec/suscripcion
+{ubicacion}
 
 —
-Ricardo Wagner-Areco
-EMPRENDEDORES.LTD | emprendedores.ec
+Sistema automatizado PULSO a la IA
 """
     msg.attach(MIMEText(body, "plain", "utf-8"))
 
-    # Adjunto
-    with open(docx_path, "rb") as f:
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(f.read())
-    encoders.encode_base64(part)
-    part.add_header("Content-Disposition", f'attachment; filename="{docx_path.name}"')
-    msg.attach(part)
-
     if dry_run:
-        log.info(f"[DRY-RUN] Email preparado para {ec['to']} — no se envía")
+        log.info(f"[DRY-RUN] Notificación preparada para {ec['to']} — no se envía")
         return
 
     port = int(ec.get("smtp_port", 587))
@@ -474,7 +521,7 @@ EMPRENDEDORES.LTD | emprendedores.ec
     with server:
         server.login(ec["smtp_user"], ec["smtp_password"].replace(" ", ""))
         server.sendmail(ec["from"], ec["to"], msg.as_string())
-    log.info(f"Email enviado a {ec['to']}")
+    log.info(f"Notificación enviada a {ec['to']}")
 
     sent_marker = BASE_DIR / "cache" / f"edition_{edition_num}.sent"
     sent_marker.parent.mkdir(parents=True, exist_ok=True)
@@ -504,8 +551,9 @@ def main():
             docx_path = Path(sys.argv[idx+1])
             edition_num = int(sys.argv[idx+2])
             cfg = load_config()
-            log.info(f"Enviando correo directo para edición {edition_num} con {docx_path}...")
-            send_email(docx_path, edition_num, cfg, dry_run=False)
+            log.info(f"Almacenando y notificando edición {edition_num} con {docx_path}...")
+            stored_path, external_ok = store_document(docx_path, edition_num, cfg)
+            notify_generated(stored_path, edition_num, cfg, dry_run=False, external_ok=external_ok)
             sys.exit(0)
         except Exception as e:
             log.error(f"Error en --send-only: {e}")
@@ -531,9 +579,9 @@ def main():
         log.info("Sin artículos nuevos. Abortando.")
         return
 
-    # 2. Generar con Gemini
+    # 2. Generar con Codex CLI (OpenAI)
     edition_num = get_next_edition(cfg, dry_run=dry_run)
-    draft_text  = generate_with_gemini(articles, cfg, edition_num)
+    draft_text  = generate_with_codex(articles, cfg, edition_num)
 
     # 3. Parsear borrador
     data = parse_draft(draft_text)
@@ -554,13 +602,18 @@ def main():
     # 5. Ejecutar publisher formateador
     final_path = run_publisher(draft_path, edition_num, cfg)
 
-    # 6. Enviar por email
-    send_email(final_path, edition_num, cfg, dry_run=dry_run)
+    # 6. Almacenar en disco externo y notificar por email (sin adjunto)
+    if dry_run:
+        log.info("[DRY-RUN] Documento generado localmente — no se almacena en disco externo ni se notifica")
+    else:
+        stored_path, external_ok = store_document(final_path, edition_num, cfg)
+        notify_generated(stored_path, edition_num, cfg, dry_run=dry_run, external_ok=external_ok)
 
-    # 7. Actualizar cache
-    for a in articles:
-        cache[a["id"]] = datetime.now().isoformat()
-    save_cache(cache)
+    # 7. Actualizar cache (no en dry-run, para no "quemar" artículos nuevos en una prueba)
+    if not dry_run:
+        for a in articles:
+            cache[a["id"]] = datetime.now().isoformat()
+        save_cache(cache)
 
     log.info(f"=== PULSO Edición {edition_num} completado ===")
 
